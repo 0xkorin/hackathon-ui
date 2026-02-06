@@ -31,11 +31,25 @@ const erc20Abi = [
   }
 ] as const;
 
+const erc4626Abi = [
+  {
+    type: "function",
+    name: "deposit",
+    stateMutability: "nonpayable",
+    inputs: [
+      { name: "assets", type: "uint256" },
+      { name: "receiver", type: "address" }
+    ],
+    outputs: [{ name: "shares", type: "uint256" }]
+  }
+] as const;
+
 export default function Home() {
   const [amount, setAmount] = useState("");
   const { address, isConnected } = useAccount();
   const chainId = useChainId();
-  const { writeContract, isPending } = useWriteContract();
+  const { writeContract: writeApprove, isPending: isApprovePending } = useWriteContract();
+  const { writeContract: writeDeposit, isPending: isDepositPending } = useWriteContract();
   const isSepolia = chainId === 11155111;
 
   const { data: allowance } = useReadContract({
@@ -59,11 +73,13 @@ export default function Home() {
   }, [amount]);
 
   const needsAllowance =
+    isSepolia &&
     isConnected &&
     parsedAmount !== undefined &&
     allowance !== undefined &&
     allowance < parsedAmount;
   const canDeposit =
+    isSepolia &&
     isConnected &&
     parsedAmount !== undefined &&
     allowance !== undefined &&
@@ -71,11 +87,21 @@ export default function Home() {
 
   const handleApprove = () => {
     if (!parsedAmount) return;
-    writeContract({
+    writeApprove({
       address: YFI_ADDRESS,
       abi: erc20Abi,
       functionName: "approve",
       args: [STYFI_ADDRESS, parsedAmount]
+    });
+  };
+
+  const handleDeposit = () => {
+    if (!parsedAmount || !address) return;
+    writeDeposit({
+      address: STYFI_ADDRESS,
+      abi: erc4626Abi,
+      functionName: "deposit",
+      args: [parsedAmount, address]
     });
   };
 
@@ -148,14 +174,19 @@ export default function Home() {
               className="rk-button"
               type="button"
               onClick={handleApprove}
-              disabled={isPending || !parsedAmount}
+              disabled={isApprovePending || !parsedAmount}
             >
-              {isPending ? "Setting allowance..." : "Approve YFI"}
+              {isApprovePending ? "Setting allowance..." : "Approve YFI"}
             </button>
           )}
           {canDeposit && (
-            <button className="rk-button" type="button">
-              Deposit YFI
+            <button
+              className="rk-button"
+              type="button"
+              onClick={handleDeposit}
+              disabled={isDepositPending || !parsedAmount}
+            >
+              {isDepositPending ? "Depositing..." : "Deposit YFI"}
             </button>
           )}
         </div>

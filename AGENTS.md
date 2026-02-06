@@ -7,7 +7,7 @@ Build a minimal, polished UI that lets a user connect their wallet and deposit Y
 - Next.js App Router skeleton exists with global styling and a single page.
 - Wallet connect UI works via RainbowKit + wagmi.
 - Reads YFI allowance for the stYFI spender and can send `approve`.
-- Deposit button exists but does nothing (no contract write).
+- Deposit button calls ERC4626 `deposit(assets, receiver)` on stYFI.
 - Tests cover Sepolia config and approval flow (Vitest + React Testing Library).
 - CSS for a right-side panel exists but the panel isn't rendered.
 - No README yet.
@@ -38,11 +38,10 @@ Build a minimal, polished UI that lets a user connect their wallet and deposit Y
   - `parseUnits` for user input
   - UI shows connect/chain/account buttons, allowance, and a Sepolia-only warning
   - Approve button appears when allowance < amount
-  - Deposit button appears when allowance >= amount (no handler)
+  - Deposit button appears when allowance >= amount and triggers `deposit`
 
 ## Known Gaps / TODO
-- Implement deposit transaction for stYFI (ABI + method + args).
-- Verify the correct stYFI deposit contract and function signature.
+- Confirm stYFI deposit ABI/decimals on chain if the interface changes.
 - Add `useWaitForTransactionReceipt` and success/error handling for approve + deposit.
 - Gate reads/writes by chain (Sepolia only) and provide an explicit "Switch network" flow.
 - Use `formatUnits` instead of `Number()` for allowance display to avoid overflow.
