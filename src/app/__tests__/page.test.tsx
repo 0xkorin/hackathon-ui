@@ -34,18 +34,29 @@ const YFI_ADDRESS = "0xD4c188F035793EEcaa53808Cc067099100b653Ba";
 const STYFI_ADDRESS = "0x4FeC571e38EB31ae8c8C51B8b6Bcb404514dC822";
 
 const makeReadContractReturn = () => ({ data: 0n });
+const allowanceValue = 2n * 10n ** 18n;
+
+const setupWriteContracts = () => {
+  const approveWriter = vi.fn();
+  const depositWriter = vi.fn();
+  mockUseWriteContract.mockReset();
+  mockUseWriteContract
+    .mockReturnValueOnce({ writeContract: approveWriter, isPending: false })
+    .mockReturnValueOnce({ writeContract: depositWriter, isPending: false });
+  return { approveWriter, depositWriter };
+};
 
 describe("Home", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mockUseAccount.mockReturnValue({ address: "0xabc", isConnected: true });
-    mockUseReadContract.mockImplementation((args) => {
+    mockUseReadContract.mockImplementation(() => {
       return makeReadContractReturn();
     });
-    mockUseWriteContract.mockReturnValue({ writeContract: vi.fn(), isPending: false });
   });
 
   it("shows a Sepolia warning when on another chain", () => {
+    setupWriteContracts();
     mockUseChainId.mockReturnValue(1);
 
     render(<Home />);
@@ -54,9 +65,8 @@ describe("Home", () => {
   });
 
   it("approves using the Sepolia addresses", async () => {
-    const writeContract = vi.fn();
+    const { approveWriter } = setupWriteContracts();
     mockUseChainId.mockReturnValue(11155111);
-    mockUseWriteContract.mockReturnValue({ writeContract, isPending: false });
 
     render(<Home />);
 
@@ -73,11 +83,33 @@ describe("Home", () => {
       })
     );
 
-    expect(writeContract).toHaveBeenCalledWith(
+    expect(approveWriter).toHaveBeenCalledWith(
       expect.objectContaining({
         address: YFI_ADDRESS,
         functionName: "approve",
         args: [STYFI_ADDRESS, expect.anything()]
+      })
+    );
+  });
+
+  it("deposits into stYFI using ERC4626", async () => {
+    const { depositWriter } = setupWriteContracts();
+    mockUseChainId.mockReturnValue(11155111);
+    mockUseReadContract.mockReturnValue({ data: allowanceValue });
+
+    render(<Home />);
+
+    const input = screen.getByLabelText("Amount");
+    await userEvent.type(input, "1");
+
+    const depositButton = screen.getByRole("button", { name: "Deposit YFI" });
+    await userEvent.click(depositButton);
+
+    expect(depositWriter).toHaveBeenCalledWith(
+      expect.objectContaining({
+        address: STYFI_ADDRESS,
+        functionName: "deposit",
+        args: [expect.anything(), "0xabc"]
       })
     );
   });
