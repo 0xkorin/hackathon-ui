@@ -1,13 +1,14 @@
 # AGENTS.md
 
 ## Intent
-Build a minimal, polished UI that lets a user connect their wallet and deposit YFI into stYFI. The current implementation already reads YFI allowance and can send an ERC20 approve; the deposit action is still a stub.
+Build a minimal, polished UI that lets a user connect their wallet and deposit YFI into stYFI. The current implementation already reads YFI allowance and can send an ERC20 approve; the deposit action calls ERC4626 `deposit(assets, receiver)`.
 
 ## Current Stage (as of 2026-02-06)
 - Next.js App Router skeleton exists with global styling and a single page.
 - Wallet connect UI works via RainbowKit + wagmi.
 - Reads YFI allowance for the stYFI spender and can send `approve`.
 - Deposit button calls ERC4626 `deposit(assets, receiver)` on stYFI.
+- Requires the hackathon extension to capture approvals and spoof allowance reads before deposit.
 - Tests cover Sepolia config and approval flow (Vitest + React Testing Library).
 - CSS for a right-side panel exists but the panel isn't rendered.
 - No README yet.
@@ -19,7 +20,7 @@ Build a minimal, polished UI that lets a user connect their wallet and deposit Y
 - CSS in `src/app/globals.css` with Space Grotesk / DM Mono
 
 ## Key Files
-- `src/app/page.tsx`: main UI, allowance read, approve action, deposit button stub
+- `src/app/page.tsx`: main UI, allowance read, approve action, deposit action
 - `src/app/providers.tsx`: wagmi/RainbowKit config, WalletConnect project id, injected provider transport
 - `src/app/layout.tsx`: app shell + Providers
 - `src/app/globals.css`: styles and component classes
@@ -39,9 +40,12 @@ Build a minimal, polished UI that lets a user connect their wallet and deposit Y
   - UI shows connect/chain/account buttons, allowance, and a Sepolia-only warning
   - Approve button appears when allowance < amount
   - Deposit button appears when allowance >= amount and triggers `deposit`
+- With the hackathon extension enabled (required, https://github.com/0xkorin/hackathon):
+  - ERC20 `approve` (`eth_sendTransaction` with `0x095ea7b3`) is blocked and stored by the extension.
+  - `allowance` (`eth_call` with `0xdd62ed3e`) can be spoofed to match stored approvals, enabling Deposit in the UI.
+  - `deposit` still goes to MetaMask as a normal transaction (no on-chain bundle).
 
 ## Known Gaps / TODO
-- Confirm stYFI deposit ABI/decimals on chain if the interface changes.
 - Add `useWaitForTransactionReceipt` and success/error handling for approve + deposit.
 - Gate reads/writes by chain (Sepolia only) and provide an explicit "Switch network" flow.
 - Use `formatUnits` instead of `Number()` for allowance display to avoid overflow.
@@ -62,9 +66,9 @@ Build a minimal, polished UI that lets a user connect their wallet and deposit Y
 - WalletConnect project id is required for non-injected wallets.
 - ERC20 `approve` returns `bool` (YFI does).
 - UI targets Sepolia.
+- The hackathon extension is required; approvals are captured and allowance reads spoofed before deposit.
 
 ## Open Questions
-- What is the exact stYFI deposit contract + ABI (function name, args, decimals)?
 - Should we support other testnets or only Sepolia?
 - Desired UX after approve/deposit (toasts, confirmations, tx history)?
 - Should allowance be set to exact amount or "max"?
